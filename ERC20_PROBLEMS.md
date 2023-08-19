@@ -1,4 +1,6 @@
-## ERC20 main problem
+## ERC20 main problems
+
+- **lost funds**
 
 ERC20 has a lack of important feature.
 The main problem is lack of possibility to handle incoming ERC20 transactions, that were performed via `transfer` and `transferFrom` function of ERC20 token.
@@ -6,12 +8,26 @@ It can result in the token being lost and **locked for ever**.
 
 The standard ***ERC721*** introduced the concept of Hook with the interface IERC721Receiver.
 
+`IERC721.sol`:
+
 > A wallet/broker/auction application MUST implement the wallet interface if it will accept safe transfers.
+
+`safeTransferFrom`:
 
 > When transfer is complete, this function
 > checks if `_to` is a smart contract (code size > 0). If so, it calls
 > `onERC721Received` on `_to` and throws if the return value is not
 > `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`.
+
+  --------------
+
+- **several transactions**
+
+  --------------
+
+- **inflexible logic**
+
+  --------------
 
 ## Proposed solutions to ERC20 short comings
 
@@ -40,4 +56,16 @@ Several ERC were created to solve this problem, such as:
 
 ## ERC777
 
+#### What does it solve
+
+#### What can be potential pitfalls
+
 ## ERC1363
+
+#### What does it solve
+
+#### What can be potential pitfalls
+
+_________________________________
+
+# Conclusion

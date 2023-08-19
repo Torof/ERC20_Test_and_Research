@@ -12,7 +12,7 @@ contract FungibleWithSanctionTest is Test {
     address immutable public sender1 = vm.addr(2);
     address immutable public senderBlacklisted = vm.addr(3);
     address immutable public receiver1 = vm.addr(4);
-    address immutable public receiverBlacklisted = vm.addr(5);
+   
 
     event AddedToBlacklist(address indexed blacklistedAddress);
     event RemovedFromBlacklist(address indexed unBlacklistedAddress);
@@ -102,6 +102,7 @@ contract FungibleWithSanctionTest is Test {
     }
 
     function testWithFuzzingRevertRemoveFromBlacklistIfNotAdmin(address notAdminFuzz) public {
+        //make sure fuzz doesn't use revert cases
         vm.assume(notAdminFuzz != admin);
 
         vm.prank(admin);
@@ -131,6 +132,7 @@ contract FungibleWithSanctionTest is Test {
     }
 
     function testWithFuzzingTransfer(address senderFuzz) public {
+        //make sure fuzz doesn't use revert cases
         vm.assume(senderFuzz != address(0));
         vm.assume(senderFuzz != admin);
 
@@ -153,6 +155,7 @@ contract FungibleWithSanctionTest is Test {
 
     
     function testTransferFrom(address fromFuzz, address toFuzz) public {
+        //make sure fuzz doesn't use revert cases
         vm.assume(fromFuzz != address(0));
         vm.assume(toFuzz != address(0));
         vm.assume(toFuzz != fromFuzz);
@@ -236,6 +239,7 @@ contract FungibleWithSanctionTest is Test {
     function testRevertTransferFromIfReceiverBlacklisted(address blacklistedReceiver, address senderOnBehalf) public {
         vm.assume(blacklistedReceiver != address(0));
         vm.assume(senderOnBehalf != address(0));
+        vm.assume(senderOnBehalf != blacklistedReceiver);
 
         //deals token to address for transfer
         deal(address(funWiSan), sender1 , 1_000_000);

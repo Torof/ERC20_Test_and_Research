@@ -4,6 +4,8 @@
 @author Torof
 @title FungibleTokenWithSanction
 @notice A simple ERC20 with the possibility for an admin to prevent an address from sending or receiving this contract's token.
+
+@dev possibility to implement an enumerable model for the blacklist. Not implemented for now.
 */
 
 pragma solidity 0.8.18;
@@ -15,7 +17,14 @@ contract FungibleWithSanction is ERC20 {
 
     mapping(address => bool) private _isBlacklisted;
 
+    /**
+    @notice emitted when an address is blacklisted
+    */
     event AddedToBlacklist(address indexed blacklistedAddress);
+
+    /**
+    @notice emitted when an address is removed from blacklist
+    */
     event RemovedFromBlacklist(address indexed unBlacklistedAddress);
 
     error SendingFromBlacklisted(address);
@@ -39,6 +48,7 @@ contract FungibleWithSanction is ERC20 {
     }
 
     /**
+    emit a {AddedToBlacklist} event
     @notice allows the admin address to sanction an address from sending and receiving the token
     @param toBlacklist the address to sanction
     @dev MUST revert if caller is not admin or the address is already blacklisted
@@ -50,6 +60,7 @@ contract FungibleWithSanction is ERC20 {
     }
 
     /**
+    emit a {RemovedFromBlacklist} event
     @notice allows the admin address to remove lift the sanction on an address
     @param toRemoveFromBlacklist the address to lift the sanction from
     @dev MUST revert if caller is not admin or the address is not blacklisted
