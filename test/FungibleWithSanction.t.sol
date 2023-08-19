@@ -13,6 +13,9 @@ contract FungibleWithSanctionTest is Test {
     address immutable public senderBlacklisted = vm.addr(3);
     address immutable public receiver1 = vm.addr(4);
     address immutable public receiverBlacklisted = vm.addr(5);
+
+    event AddedToBlacklist(address indexed blacklistedAddress);
+    event RemovedFromBlacklist(address indexed unBlacklistedAddress);
     
     function setUp() public {
         funWiSan =  new FungibleWithSanction(admin, "NoPowerToken", "NPT");
@@ -26,16 +29,20 @@ contract FungibleWithSanctionTest is Test {
         assertEq(funWiSan.totalSupply(), 10_000_000);
     }
 
-    function testWithFuzzingAddToBlacklist(address blacklisted) public {
+    function testWithFuzzingAddToBlacklist(address blacklistedFuzz) public {
         //address should not be blacklisted
-        assertFalse(funWiSan.isBlacklisted(blacklisted));
+        assertFalse(funWiSan.isBlacklisted(blacklistedFuzz));
 
         //admin blacklists address
         vm.prank(admin);
-        funWiSan.addToBlacklist(blacklisted);
+
+        vm.expectEmit();
+        // We emit the AddedToBlacklist event we expect to see.
+        emit AddedToBlacklist(blacklistedFuzz);
+        funWiSan.addToBlacklist(blacklistedFuzz);
 
         //address should be blacklisted
-        assertTrue(funWiSan.isBlacklisted(blacklisted));
+        assertTrue(funWiSan.isBlacklisted(blacklistedFuzz));
     }
 
     function testRevertWithFuzzingAddToBlacklistIfBlacklisted(address blacklistedFuzz) public {
@@ -70,6 +77,10 @@ contract FungibleWithSanctionTest is Test {
 
         //address should be blacklisted
         assertTrue(funWiSan.isBlacklisted(blacklistedFuzz));
+
+        vm.expectEmit();
+        // We emit the RemoveFromBlacklist event we expect to see.
+        emit RemovedFromBlacklist(blacklistedFuzz);
 
         //admin removes from blacklist
         funWiSan.removeFromBlacklist(blacklistedFuzz);
