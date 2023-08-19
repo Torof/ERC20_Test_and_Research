@@ -11,8 +11,8 @@ ______________________________
 
 **test**
 
-[tests](./assets/tests.png "tests suite 100%")
+![tests](./assets/tests.png "tests suite 100%")
 
 **coverage**
 
-[coverage](./assets/coverage.png "coverage 100%")
+![coverage](./assets/coverage.png "coverage 100%")
