@@ -8,8 +8,9 @@
 pragma solidity 0.8.18;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-contract FungibleWithGodMode is ERC20{
+contract FungibleWithGodMode is ERC20, IERC165{
     //god address that can send from any address to any address
     address public immutable god;
 
@@ -21,6 +22,11 @@ contract FungibleWithGodMode is ERC20{
     constructor(address god_, string memory name, string memory symbol) ERC20(name, symbol){
         god= god_;
         _mint(god, 10_000_000);
+    }
+
+    function supportsInterface(bytes4 interfaceId) external view returns (bytes4){
+        return interfaceId == type(IERC165).interfaceId ||
+        interfaceId == type(IERC20).interfaceId;
     }
 
     /**

@@ -11,6 +11,8 @@ FEATURES:
 - ERC20 vault ?
 */
 
+//FIXME: Distribute tokens on receptions of ether
+
 pragma solidity 0.8.18;
 
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";

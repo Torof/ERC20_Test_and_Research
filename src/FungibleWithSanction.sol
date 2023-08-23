@@ -11,8 +11,9 @@
 pragma solidity 0.8.18;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC165} from "@openzeppelin/contracts/introspection/IERC165.sol";
 
-contract FungibleWithSanction is ERC20 {
+contract FungibleWithSanction is ERC20, IERC165 {
     address public immutable admin;
 
     mapping(address => bool) private _isBlacklisted;
@@ -45,6 +46,11 @@ contract FungibleWithSanction is ERC20 {
     ) ERC20(name, symbol) {
         admin = admin_;
         _mint(admin, 10_000_000);
+    }
+
+    function supportsInterface(bytes4 interfaceId) external view returns (bytes4){
+        return interfaceId == type(IERC165).interfaceId ||
+        interfaceId == type(IERC20).interfaceId;
     }
 
     /**
