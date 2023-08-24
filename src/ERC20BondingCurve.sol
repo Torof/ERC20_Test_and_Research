@@ -11,7 +11,6 @@ FEATURES:
 - ERC20 vault ?
 */
 
-//FIXME: Distribute tokens on receptions of ether
 
 pragma solidity 0.8.18;
 
@@ -42,7 +41,11 @@ contract ERC20BondingCurve is IERC165, ERC20 {
         interfaceId == type(IERC20).interfaceId;
     }
 
-    //
+    /**
+    emits a {TokenBought} event
+    @notice buys an amount of tokens to the contract for ether. The price is set according a linear bonding curve    @param amount the amount of tokens to buy
+    @param amount the amount of tokens to sell
+    */
     function buyToken(uint256 amount) public payable {
         uint256 initialTotalSupply = totalSupply() + 1;
         uint256 finalTotalSupply = initialTotalSupply + amount - 1;  // Minus 1 because totalSupply is already incremented in _mint
@@ -57,6 +60,13 @@ contract ERC20BondingCurve is IERC165, ERC20 {
     }
 
 
-    function sellToken() external {}
+    /**
+    emits a {TokenSold} event
+    @notice sells an amount of tokens to the contract for ether. The price is set according a linear bonding curve
+    @param amount the amount of tokens to sell
+    */
+    function sellToken(uint256 amount) external {
+        emit TokenSold(msg.sender, priceToPay, amount);
+    }
 }
 

@@ -5,6 +5,8 @@ pragma solidity 0.8.18;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "../src/FungibleWithGodMode.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 contract FungibleWithGodModeTest is Test {
     FungibleWithGodMode public funWiGoMo;
@@ -23,6 +25,17 @@ contract FungibleWithGodModeTest is Test {
         assertEq(funWiGoMo.god(), god);
         assertEq(funWiGoMo.balanceOf(god), 10_000_000);
         assertEq(funWiGoMo.totalSupply(), 10_000_000);
+    }
+
+    function testSupportInterface(bytes4 wrongInterfaceId) public {
+        bool supportsIERC20 = funWiGoMo.supportsInterface(type(IERC20).interfaceId);
+        bool supportsIERC165 = funWiGoMo.supportsInterface(type(IERC165).interfaceId);
+
+        bool otherbytes4 = funWiGoMo.supportsInterface(wrongInterfaceId);
+
+        assertTrue(supportsIERC20);
+        assertTrue(supportsIERC165);
+        assertFalse(otherbytes4);
     }
 
     function testWithFuzzingTransferFromAGod(address from, address to) public {

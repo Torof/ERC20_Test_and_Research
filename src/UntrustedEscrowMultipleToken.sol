@@ -12,10 +12,8 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 @notice 
 @dev use of block.timestamp MUST implement safer ways (such as oracle).
 */
-
+//TODO: NatSpec
 //CHECK: use ERC165Checker ?
-//ALERT: no way to unlock funds
-//TODO: multisig for unlocking funds
 //CHECK: use of ENUM for contractChecks ? (0 = notContract, 1 = noTotalSupply, 2 = ERC71, 3 = checksPassed)
 
 
@@ -48,6 +46,13 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
         escrowSupply = 1;
     }
 
+    /**
+    emits a {Deposited} event
+    @notice
+    @param recipient
+    @param token
+    @param amount
+    */
     function deposit(address recipient, address token, uint256 amount) external {
         require(recipient != address(0), "no zero address receiver");
         require(contractChecks(token), "CHECKS: failed");
@@ -74,7 +79,9 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
     //CHECK: if using ENUM, can use event to log error;
     //CHECK: use ERC165Checker ?
     /**
+    @notice
     @dev the function is made public so that it can be called as a view on the application side
+    @param token
     */
     function contractChecks(address token) public view returns(bool){
         //Verify that address given is a contract;
@@ -93,6 +100,11 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
         return true;
     }
 
+    /**
+    @notice
+    @param escrowIndex
+    @dev
+    */
     function withdraw(uint256 escrowIndex) external {
         Escrow memory escrow_ = _escrows[escrowIndex];
 
@@ -109,10 +121,20 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
         emit Withdrawn(escrow_.recipient, escrow_.amount, escrowIndex);
     }
 
+    /**
+    @notice
+    @param recipient
+    @param token
+    */
     function balanceOf(address recipient, address token) external view returns(uint256){
         return _balanceOf[recipient][token];
     }
 
+    /**
+    @notice
+    @param escrowIndex
+    @dev
+    */
     function approveUnlocking(uint escrowIndex) external {
         Escrow memory escrow_ = _escrows[escrowIndex];
         require(msg.sender == escrow_.sender, "only sender can approve");
@@ -125,7 +147,11 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
         emit UnlockingApproved(escrowIndex);
     }
 
-    
+    /**
+    @notice
+    @param escrowIndex
+    @dev
+    */
     function unlockFunds(uint escrowIndex) external onlyOwner {
         Escrow memory escrow_ = _escrows[escrowIndex];
         require(block.timestamp > escrow_.initTime + 6 weeks, "only after 6 weeks");

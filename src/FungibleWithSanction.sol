@@ -13,9 +13,10 @@ pragma solidity 0.8.18;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
-contract FungibleWithSanction is ERC20, IERC165 {
-    address public immutable admin;
+
+contract FungibleWithSanction is ERC20, Ownable2Step, IERC165 {
 
     mapping(address => bool) private _isBlacklisted;
 
@@ -35,18 +36,11 @@ contract FungibleWithSanction is ERC20, IERC165 {
     error NotBlacklisted(address);
     error NotAdmin();
 
-    modifier onlyAdmin() {
-        if(msg.sender != admin) revert NotAdmin();
-        _;
-    }
-
     constructor(
-        address admin_,
         string memory name,
         string memory symbol
     ) ERC20(name, symbol) {
-        admin = admin_;
-        _mint(admin, 10_000_000);
+        _mint(owner(), 10_000_000);
     }
 
     function supportsInterface(bytes4 interfaceId) external view returns (bool){
@@ -60,7 +54,7 @@ contract FungibleWithSanction is ERC20, IERC165 {
     @param toBlacklist the address to sanction
     @dev MUST revert if caller is not admin or the address is already blacklisted
     */
-    function addToBlacklist(address toBlacklist) external onlyAdmin {
+    function addToBlacklist(address toBlacklist) external onlyOwner {
         if(_isBlacklisted[toBlacklist]) revert Blacklisted(toBlacklist);
         _isBlacklisted[toBlacklist] = true;
         emit AddedToBlacklist(toBlacklist);
@@ -72,7 +66,7 @@ contract FungibleWithSanction is ERC20, IERC165 {
     @param toRemoveFromBlacklist the address to lift the sanction from
     @dev MUST revert if caller is not admin or the address is not blacklisted
     */
-    function removeFromBlacklist(address toRemoveFromBlacklist) external onlyAdmin {
+    function removeFromBlacklist(address toRemoveFromBlacklist) external onlyOwner {
         if(!_isBlacklisted[toRemoveFromBlacklist]) revert NotBlacklisted(toRemoveFromBlacklist);
         _isBlacklisted[toRemoveFromBlacklist] = false;
         emit RemovedFromBlacklist(toRemoveFromBlacklist);
@@ -101,23 +95,3 @@ contract FungibleWithSanction is ERC20, IERC165 {
         return _isBlacklisted[toCheck];
     }
 }
-
-
-// function transfer(
-    //     address to,
-    //     uint256 amount
-    // ) public override returns (bool) {
-    //     if (_isBlacklisted[msg.sender])
-    //         revert SendingFromBlacklisted(msg.sender);
-    //     if (_isBlacklisted[to]) revert SendingToBlacklisted(to);
-    //     super.transfer(to, amount);
-    //     return true;
-    // }
-
-    // function transferFrom(address from, address to, uint256 amount) public override returns(bool){
-    //     if (_isBlacklisted[from])
-    //         revert SendingFromBlacklisted(from);
-    //     if (_isBlacklisted[to]) revert SendingToBlacklisted(to);
-    //     super.transferFrom(from, to, amount);
-    //     return true;
-    // }

@@ -5,10 +5,13 @@ pragma solidity 0.8.18;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "../src/FungibleWithSanction.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
 
 contract FungibleWithSanctionTest is Test {
     FungibleWithSanction public funWiSan;
-    address immutable public admin = vm.addr(1);
+    address immutable public owner = vm.addr(1);
     address immutable public sender1 = vm.addr(2);
     address immutable public senderBlacklisted = vm.addr(3);
     address immutable public receiver1 = vm.addr(4);
@@ -18,23 +21,35 @@ contract FungibleWithSanctionTest is Test {
     event RemovedFromBlacklist(address indexed unBlacklistedAddress);
     
     function setUp() public {
-        funWiSan =  new FungibleWithSanction(admin, "NoPowerToken", "NPT");
+        vm.prank(owner);
+        funWiSan =  new FungibleWithSanction("NoPowerToken", "NPT");
     }
 
     function testSetUp() public {
         assertEq(funWiSan.name(), "NoPowerToken");
         assertEq(funWiSan.symbol(), "NPT");
-        assertEq(funWiSan.admin(), admin);
-        assertEq(funWiSan.balanceOf(admin), 10_000_000);
+        assertEq(funWiSan.owner(), owner);
+        assertEq(funWiSan.balanceOf(owner), 10_000_000);
         assertEq(funWiSan.totalSupply(), 10_000_000);
+    }
+
+    function testSupportInterface(bytes4 wrongInterfaceId) public {
+        bool supportsIERC20 = funWiSan.supportsInterface(type(IERC20).interfaceId);
+        bool supportsIERC165 = funWiSan.supportsInterface(type(IERC165).interfaceId);
+
+        bool otherbytes4 = funWiSan.supportsInterface(wrongInterfaceId);
+
+        assertTrue(supportsIERC20);
+        assertTrue(supportsIERC165);
+        assertFalse(otherbytes4);
     }
 
     function testWithFuzzingAddToBlacklist(address blacklistedFuzz) public {
         //address should not be blacklisted
         assertFalse(funWiSan.isBlacklisted(blacklistedFuzz));
 
-        //admin blacklists address
-        vm.prank(admin);
+        //owner blacklists address
+        vm.prank(owner);
 
         vm.expectEmit();
         // We emit the AddedToBlacklist event we expect to see.
@@ -46,8 +61,8 @@ contract FungibleWithSanctionTest is Test {
     }
 
     function testRevertWithFuzzingAddToBlacklistIfBlacklisted(address blacklistedFuzz) public {
-        //admin blacklists address
-        vm.startPrank(admin);
+        //owner blacklists address
+        vm.startPrank(owner);
         funWiSan.addToBlacklist(blacklistedFuzz);
 
         //Should revert , user already blacklisted
@@ -57,22 +72,21 @@ contract FungibleWithSanctionTest is Test {
         vm.stopPrank();
     }
 
-    function testRevertAddToBlacklistIfNotAdmin(address notAdminFuzz) public {
-        vm.assume(notAdminFuzz != admin);
+    function testRevertAddToBlacklistIfNotOwner(address notOwnerFuzz) public {
+        vm.assume(notOwnerFuzz != owner);
 
         //caller is not admin
-        vm.startPrank(notAdminFuzz);
-        bytes4 selector = bytes4(keccak256("NotAdmin()"));
+        vm.startPrank(notOwnerFuzz);
 
-        //should revert notAdmin()
-        vm.expectRevert(selector);
+        //should revert notOwner()
+        vm.expectRevert(abi.encodePacked("Ownable: caller is not the owner"));
         funWiSan.addToBlacklist(senderBlacklisted);
         vm.stopPrank();
     }
 
     function testWithFuzzingRemoveFromBlacklist(address blacklistedFuzz) public {
         //admin blacklists address
-        vm.startPrank(admin);
+        vm.startPrank(owner);
         funWiSan.addToBlacklist(blacklistedFuzz);
 
         //address should be blacklisted
@@ -82,7 +96,7 @@ contract FungibleWithSanctionTest is Test {
         // We emit the RemoveFromBlacklist event we expect to see.
         emit RemovedFromBlacklist(blacklistedFuzz);
 
-        //admin removes from blacklist
+        //owner removes from blacklist
         funWiSan.removeFromBlacklist(blacklistedFuzz);
 
         vm.stopPrank();
@@ -92,7 +106,7 @@ contract FungibleWithSanctionTest is Test {
     }
 
     function testRevertRemoveFromBlacklistIfNotBlacklisted(address blacklistedFuzz) public {
-        vm.startPrank(admin);
+        vm.startPrank(owner);
 
         //Should revert , user already blacklisted
         bytes4 selector = bytes4(keccak256("NotBlacklisted(address)"));
@@ -101,20 +115,20 @@ contract FungibleWithSanctionTest is Test {
         vm.stopPrank();
     }
 
-    function testWithFuzzingRevertRemoveFromBlacklistIfNotAdmin(address notAdminFuzz) public {
+    function testWithFuzzingRevertRemoveFromBlacklistIfNotOwner(address notOwnerFuzz) public {
         //make sure fuzz doesn't use revert cases
-        vm.assume(notAdminFuzz != admin);
+        vm.assume(notOwnerFuzz != owner);
 
-        vm.prank(admin);
-        //admin adds to blacklist
+        vm.prank(owner);
+        //owner adds to blacklist
         funWiSan.addToBlacklist(senderBlacklisted);
 
-        //caller is not admin
-        vm.startPrank(notAdminFuzz);
-        bytes4 selector = bytes4(keccak256("NotAdmin()"));
+        //caller is not owner
+        vm.startPrank(notOwnerFuzz);
+        
 
-        //should revert notAdmin()
-        vm.expectRevert(selector);
+        //should revert notOwner()
+        vm.expectRevert(abi.encodePacked("Ownable: caller is not the owner"));
         funWiSan.removeFromBlacklist(senderBlacklisted);
         vm.stopPrank();
     }
@@ -124,7 +138,7 @@ contract FungibleWithSanctionTest is Test {
         assertFalse(funWiSan.isBlacklisted(blacklisted));
 
         //admin blacklists address
-        vm.prank(admin);
+        vm.prank(owner);
         funWiSan.addToBlacklist(blacklisted);
 
         //address should be blacklisted
@@ -134,20 +148,20 @@ contract FungibleWithSanctionTest is Test {
     function testWithFuzzingTransfer(address senderFuzz) public {
         //make sure fuzz doesn't use revert cases
         vm.assume(senderFuzz != address(0));
-        vm.assume(senderFuzz != admin);
+        vm.assume(senderFuzz != owner);
 
         uint balanceSFBefore = funWiSan.balanceOf(senderFuzz);
-        uint balanceAdminBefore = funWiSan.balanceOf(admin);
+        uint balanceAdminBefore = funWiSan.balanceOf(owner);
 
         //admin transfer 1_000_000 to senderFuzz
-        vm.prank(admin);
+        vm.prank(owner);
         bool transferExecuted = funWiSan.transfer(senderFuzz, 1_000_000);
 
         //assert transfer was successful
         assertTrue(transferExecuted);
 
         uint balanceSFAfter = funWiSan.balanceOf(senderFuzz);
-        uint balanceAdminAfter = funWiSan.balanceOf(admin);
+        uint balanceAdminAfter = funWiSan.balanceOf(owner);
         //assert balances were updated
         assertEq(balanceSFAfter, balanceSFBefore + 1_000_000);
         assertEq(balanceAdminAfter, balanceAdminBefore - 1_000_000);
@@ -164,10 +178,10 @@ contract FungibleWithSanctionTest is Test {
         uint balanceReceiverBefore = funWiSan.balanceOf(toFuzz);
 
         vm.prank(fromFuzz);
-        funWiSan.approve(admin, 1_000_000);
+        funWiSan.approve(owner, 1_000_000);
 
         //admin transfer 1_000_000 to sender1
-        vm.prank(admin);
+        vm.prank(owner);
         bool transferExecuted = funWiSan.transferFrom(fromFuzz, toFuzz, 1_000_000);
 
         //assert transfer was successful
@@ -186,7 +200,7 @@ contract FungibleWithSanctionTest is Test {
         deal(address(funWiSan), blacklistedSender, 1_000_000);
 
         //admin adds address to blacklist
-        vm.prank(admin);
+        vm.prank(owner);
         funWiSan.addToBlacklist((blacklistedSender));
 
         vm.prank(blacklistedSender);
@@ -204,7 +218,7 @@ contract FungibleWithSanctionTest is Test {
         deal(address(funWiSan), sender1 , 1_000_000);
 
         //admin adds address to blacklist
-        vm.prank(admin);
+        vm.prank(owner);
         funWiSan.addToBlacklist((blacklistedReceiver));
 
         vm.prank(sender1);
@@ -221,7 +235,7 @@ contract FungibleWithSanctionTest is Test {
         deal(address(funWiSan), blacklistedSender, 1_000_000);
 
         //admin adds address to blacklist
-        vm.prank(admin);
+        vm.prank(owner);
         funWiSan.addToBlacklist((blacklistedSender));
 
         //sender approves random address to transfer on behalf
@@ -245,7 +259,7 @@ contract FungibleWithSanctionTest is Test {
         deal(address(funWiSan), sender1 , 1_000_000);
 
         //admin adds address to blacklist
-        vm.prank(admin);
+        vm.prank(owner);
         funWiSan.addToBlacklist((blacklistedReceiver));
 
         //sender approves random address to transfer on behalf
