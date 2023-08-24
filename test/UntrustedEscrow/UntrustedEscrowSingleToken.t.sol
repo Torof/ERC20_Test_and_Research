@@ -6,4 +6,4 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "../../src/UntrustedEscrow/UntrustedEscrowSingleToken.sol";
 
-contract UntrustedEscrowMultipleTokenTest is Test {}
+contract UntrustedEscrowSingleTokenTest is Test {}

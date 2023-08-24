@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: NONE
+
+pragma solidity 0.8.18;
+
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract ERC20T is ERC20 ("Test", "TST"){
+
+    constructor(uint256 initialSupply){
+        _mint(msg.sender, initialSupply);
+    }
+}

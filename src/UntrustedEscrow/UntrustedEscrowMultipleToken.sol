@@ -49,6 +49,7 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
     }
 
     function deposit(address recipient, address token, uint256 amount) external {
+        require(recipient != address(0), "no zero address receiver");
         require(contractChecks(token), "CHECKS: failed");
 
         //implement check because token contract origin is unsure
@@ -80,9 +81,9 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
         require(address(token).isContract(), "not a contract");
         
         //Verify that contracts implements a totalSupply
-        (bool success,bytes memory data) = token.staticcall(abi.encode("totalSupply()"));
+        (bool success,bytes memory data) = token.staticcall(abi.encodeWithSignature("totalSupply()"));
         uint decodedData = abi.decode(data, (uint256));
-        require(success && decodedData > 0);
+        require(success && decodedData > 0, "no total supply");
 
         //verifies that address is not an ERC721 compliant
         // try token.call(abi.encodeWithSignature("supportsInterface(bytes4)", _IERC721_INTERFACE_ID)) {
@@ -124,13 +125,14 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
         emit UnlockingApproved(escrowIndex);
     }
 
-    //TODO: memory escrow_
+    
     function unlockFunds(uint escrowIndex) external onlyOwner {
-        require(block.timestamp > _escrows[escrowIndex].initTime + 6 weeks, "only after 6 weeks");
+        Escrow memory escrow_ = _escrows[escrowIndex];
+        require(block.timestamp > escrow_.initTime + 6 weeks, "only after 6 weeks");
         require(_unlockingEscrow[escrowIndex], "sender hasn't approved");
 
         //transfer the funds back to the sender
-        IERC20(_escrows[escrowIndex].token).safeTransfer(_escrows[escrowIndex].sender, _escrows[escrowIndex].amount);
+        IERC20(escrow_.token).safeTransfer(escrow_.sender, escrow_.amount);
 
         emit Unlocked(escrowIndex);
     }
