@@ -28,6 +28,8 @@ contract FungibleWithGodModeTest is Test {
     }
 
     function testSupportInterface(bytes4 wrongInterfaceId) public {
+        vm.assume(wrongInterfaceId != type(IERC20).interfaceId);
+        vm.assume(wrongInterfaceId != type(IERC165).interfaceId);
         bool supportsIERC20 = funWiGoMo.supportsInterface(type(IERC20).interfaceId);
         bool supportsIERC165 = funWiGoMo.supportsInterface(type(IERC165).interfaceId);
 

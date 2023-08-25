@@ -27,10 +27,10 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
     mapping(address => mapping(address => uint256)) private _balanceOf;
     uint256 public escrowSupply;
 
-    event Deposited(address indexed sender, uint256 amount, uint256 indexed escrowIndex);
-    event Withdrawn(address indexed recipient, uint256 amount, uint256 indexed escrowIndex);
-    event UnlockingApproved(uint256 indexed escrowIndex);
-    event Unlocked(uint256 indexed escrowIndex);
+    event Deposited(address indexed sender, uint256 amount, uint256 indexed index);
+    event Withdrawn(address indexed recipient, uint256 amount, uint256 indexed index);
+    event UnlockingApproved(uint256 indexed index);
+    event Unlocked(uint256 indexed index);
 
     struct Escrow {
         address token;
@@ -48,10 +48,10 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
 
     /**
     emits a {Deposited} event
-    @notice
-    @param recipient
-    @param token
-    @param amount
+    @notice a user can deposit an amount of ERC20
+    @param recipient the address that will be able to withdraw the funds
+    @param token address of the 'supposed' ERC20 contract
+    @param amount amount of the fund
     */
     function deposit(address recipient, address token, uint256 amount) external {
         require(recipient != address(0), "no zero address receiver");
@@ -79,9 +79,9 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
     //CHECK: if using ENUM, can use event to log error;
     //CHECK: use ERC165Checker ?
     /**
-    @notice
+    @notice implements some checks to ensure as much as possible that called token IS a valid ERC20 contract
     @dev the function is made public so that it can be called as a view on the application side
-    @param token
+    @param token address of the 'supposed' ERC20 contract to run checks on
     */
     function contractChecks(address token) public view returns(bool){
         //Verify that address given is a contract;
@@ -101,66 +101,85 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
     }
 
     /**
-    @notice
-    @param escrowIndex
+    @notice the recipient of funds can withdraw them 3 days after deposit 
+    @param index id of the escrow to withdraw the funds from
     @dev
     */
-    function withdraw(uint256 escrowIndex) external {
-        Escrow memory escrow_ = _escrows[escrowIndex];
+    function withdraw(uint256 index) external {
+        Escrow memory escrow_ = escrow(index);
 
         require(escrow_.recipient == msg.sender, "caller is not recipient");
-        require(!escrow_.isRedeemed && escrow_.claimTime != 0, "funds already redeemed");
-        require(block.timestamp > escrow_.initTime + 3 days, "cannot be redeemed yet");
+        require(!escrow_.isRedeemed && escrow_.claimTime == 0, "funds already claimed");
+        require(block.timestamp > escrow_.initTime + 3 days, "cannot be claimed yet");
 
         //Set claimTime to now and isRedeemed to true to prevent re-using the funds from escrow
-        _escrows[escrowIndex].claimTime = uint64(block.timestamp);
-        _escrows[escrowIndex].isRedeemed = true;
+        _escrows[index].claimTime = uint64(block.timestamp);
+        _escrows[index].isRedeemed = true;
 
         //Transfer from the contract to the recipient
         IERC20(escrow_.token).safeTransfer(escrow_.recipient, escrow_.amount);
-        emit Withdrawn(escrow_.recipient, escrow_.amount, escrowIndex);
+        emit Withdrawn(escrow_.recipient, escrow_.amount, index);
     }
 
     /**
-    @notice
-    @param recipient
-    @param token
+    @notice shows the balance of an address for a particular ERC20
+    @param recipient the address to check the balance of
+    @param token the address of the 'supposed' ERC20 token
     */
     function balanceOf(address recipient, address token) external view returns(uint256){
         return _balanceOf[recipient][token];
     }
 
     /**
-    @notice
-    @param escrowIndex
+    @notice the sender of an escrow can approve a refund if owner hasn't claimed the funds for 6 weeks. It should probably be used for problems
+    @param index the escrow to unlock
     @dev
     */
-    function approveUnlocking(uint escrowIndex) external {
-        Escrow memory escrow_ = _escrows[escrowIndex];
+    function approveUnlocking(uint index) external {
+        Escrow memory escrow_ = escrow(index);
+        require(!escrow_.isRedeemed, "escrow is over");
+        require(!isUnlocked(index), "already waiting for refunds");
         require(msg.sender == escrow_.sender, "only sender can approve");
         require(block.timestamp > escrow_.initTime + 6 weeks, "only after 6 weeks");
-        require(!escrow_.isRedeemed, "escrow is over");
 
         //sender approves refund
-        _unlockingEscrow[escrowIndex] = true;
+        _unlockingEscrow[index] = true;
 
-        emit UnlockingApproved(escrowIndex);
+        emit UnlockingApproved(index);
     }
 
     /**
-    @notice
-    @param escrowIndex
+    @notice contract owner can agree to unlock the funds upon request if an escrow's recipient hasn't claimed funds. 
+        Once unlocking is approved, funds are sent back to sender and escrow is over.
+    @param index id of the escrow
     @dev
     */
-    function unlockFunds(uint escrowIndex) external onlyOwner {
-        Escrow memory escrow_ = _escrows[escrowIndex];
+    function unlockFunds(uint index) external onlyOwner {
+        Escrow memory escrow_ = escrow(index);
+        require(isUnlocked(index));
         require(block.timestamp > escrow_.initTime + 6 weeks, "only after 6 weeks");
-        require(_unlockingEscrow[escrowIndex], "sender hasn't approved");
+        require(_unlockingEscrow[index], "sender hasn't approved");
+        
+        //escrow refunded and locked
+        escrow_.isRedeemed = true;
 
         //transfer the funds back to the sender
         IERC20(escrow_.token).safeTransfer(escrow_.sender, escrow_.amount);
 
-        emit Unlocked(escrowIndex);
+        emit Unlocked(index);
     }
 
+    /// @param index id of the escrow
+    /// @return Escrow return the escrow at index
+    function escrow(uint256 index) public view returns(Escrow memory){
+        return _escrows[index];
+    }
+
+    /**
+    @notice check if an escrow is unlocked for refund
+    @param index id of the escrow
+    */
+    function isUnlocked(uint256 index) public view returns(bool){
+        return  _unlockingEscrow[index];
+    }
 }

@@ -34,6 +34,8 @@ contract FungibleWithSanctionTest is Test {
     }
 
     function testSupportInterface(bytes4 wrongInterfaceId) public {
+        vm.assume(wrongInterfaceId != type(IERC20).interfaceId);
+        vm.assume(wrongInterfaceId != type(IERC165).interfaceId);
         bool supportsIERC20 = funWiSan.supportsInterface(type(IERC20).interfaceId);
         bool supportsIERC165 = funWiSan.supportsInterface(type(IERC165).interfaceId);
 
@@ -72,6 +74,8 @@ contract FungibleWithSanctionTest is Test {
         vm.stopPrank();
     }
 
+    /**
+     */
     function testRevertAddToBlacklistIfNotOwner(address notOwnerFuzz) public {
         vm.assume(notOwnerFuzz != owner);
 
@@ -232,6 +236,7 @@ contract FungibleWithSanctionTest is Test {
         vm.assume(blacklistedSender != address(0));
         vm.assume(senderOnBehalf != address(0));
         vm.assume(senderOnBehalf != blacklistedSender);
+        vm.assume(blacklistedSender != receiver1);
         deal(address(funWiSan), blacklistedSender, 1_000_000);
 
         //admin adds address to blacklist
@@ -245,7 +250,7 @@ contract FungibleWithSanctionTest is Test {
         //random address transfers from blacklisted sender, should revert
         vm.prank(senderOnBehalf);
         bytes4 selector = bytes4(keccak256("SendingFromBlacklisted(address)"));
-        //transfer should revert, sender address is blacklisted
+        //transfer should revert, sender address is blacklisted 
         vm.expectRevert(abi.encodeWithSelector(selector, blacklistedSender));
         funWiSan.transferFrom(blacklistedSender, receiver1, 1_000_000);
     }
@@ -254,6 +259,7 @@ contract FungibleWithSanctionTest is Test {
         vm.assume(blacklistedReceiver != address(0));
         vm.assume(senderOnBehalf != address(0));
         vm.assume(senderOnBehalf != blacklistedReceiver);
+        vm.assume(blacklistedReceiver != sender1);
 
         //deals token to address for transfer
         deal(address(funWiSan), sender1 , 1_000_000);

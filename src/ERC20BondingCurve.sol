@@ -66,7 +66,7 @@ contract ERC20BondingCurve is IERC165, ERC20 {
     @param amount the amount of tokens to sell
     */
     function sellToken(uint256 amount) external {
-        emit TokenSold(msg.sender, priceToPay, amount);
+        emit TokenSold(msg.sender, 0, amount);
     }
 }
 
