@@ -23,13 +23,13 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
 
     bytes4 private constant _IERC721_INTERFACE_ID = 0x80ac58cd;
     mapping(uint256 => Escrow) private _escrows;
-    mapping(uint256 => bool) private _unlockingEscrow;
+    mapping(uint256 => bool) private _requestUnlock;
     mapping(address => mapping(address => uint256)) private _balanceOf;
     uint256 public escrowSupply;
 
     event Deposited(address indexed sender, uint256 amount, uint256 indexed index);
     event Withdrawn(address indexed recipient, uint256 amount, uint256 indexed index);
-    event UnlockingApproved(uint256 indexed index);
+    event UnlockingRequested(uint256 indexed index);
     event Unlocked(uint256 indexed index);
 
     struct Escrow {
@@ -58,7 +58,7 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
         require(contractChecks(token), "CHECKS: failed");
 
         //implement check because token contract origin is unsure
-        require(IERC20(token).allowance(msg.sender, address(this)) >= amount, "ERC20: insufficient allowance");
+        // require(IERC20(token).allowance(msg.sender, address(this)) >= amount, "ERC20: insufficient allowance");
 
         //Create a new escrow
         Escrow memory escrow_ = Escrow(token, msg.sender, recipient, amount, uint64(block.timestamp),0, false);
@@ -135,17 +135,17 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
     @param index the escrow to unlock
     @dev
     */
-    function approveUnlocking(uint index) external {
+    function requestUnlocking(uint index) external {
         Escrow memory escrow_ = escrow(index);
         require(!escrow_.isRedeemed, "escrow is over");
-        require(!isUnlocked(index), "already waiting for refunds");
-        require(msg.sender == escrow_.sender, "only sender can approve");
+        require(!isRequested(index), "already requested");
+        require(msg.sender == escrow_.sender, "only sender can request");
         require(block.timestamp > escrow_.initTime + 6 weeks, "only after 6 weeks");
 
         //sender approves refund
-        _unlockingEscrow[index] = true;
+        _requestUnlock[index] = true;
 
-        emit UnlockingApproved(index);
+        emit UnlockingRequested(index);
     }
 
     /**
@@ -156,9 +156,7 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
     */
     function unlockFunds(uint index) external onlyOwner {
         Escrow memory escrow_ = escrow(index);
-        require(isUnlocked(index));
-        require(block.timestamp > escrow_.initTime + 6 weeks, "only after 6 weeks");
-        require(_unlockingEscrow[index], "sender hasn't approved");
+        require(isRequested(index), "not requested");
         
         //escrow refunded and locked
         escrow_.isRedeemed = true;
@@ -179,7 +177,7 @@ contract UntrustedEscrowMultipleToken is Ownable2Step {
     @notice check if an escrow is unlocked for refund
     @param index id of the escrow
     */
-    function isUnlocked(uint256 index) public view returns(bool){
-        return  _unlockingEscrow[index];
+    function isRequested(uint256 index) public view returns(bool){
+        return  _requestUnlock[index];
     }
 }

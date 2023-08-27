@@ -22,13 +22,19 @@ The standard ***ERC721*** introduced the concept of Hook with the interface IERC
 
 - ### several transactions
 
-Needs to call `approve` and then `transferFrom`
+Needs to call `approve` and then `transferFrom`.
+That requires two separate transactions and therefore costs more gas. In time of high traffic the difference can be significant.
 
 - ### inflexible logic / No interaction
 
-The concept of calling a function on the receiving contract allows to react to a transfer can allow to extend functionnality and interactions.
+The concept of calling a function on the receiving contract allows to react to a transfer and allows to extend functionnality and interactions.
 
-For example on reception of a token the contract could *automatically stake the token*, send it to another contract, simply register the reception for security purposes or allowing the sender to withdraw ... or any kind of interaction desired.
+For example on reception of a token the contract could :
+- *automatically stake the token*, 
+- send it to another contract, 
+- simply register the reception for security purposes,
+- allowing the sender to withdraw ... 
+- or any kind of interaction.
 
 ## Proposed solutions to ERC20 short comings
 
@@ -38,12 +44,15 @@ Several ERC were created to solve this problem, such as:
 
 #### Non Final ERCs
 
-- [ERC223](https://eips.ethereum.org/EIPS/eip-223  "ERC223-EIPS-REVIEW")
+- [ERC223](https://eips.ethereum.org/EIPS/eip-223  "ERC223-EIPS-LAST_CALL")
     - [ERC223_issues](https://github.com/ethereum/EIPs/issues/223 "ERC223 issues")
-- [ERC667](https://github.com/ethereum/EIPs/issues/677  "ERC667-NOT AN EIP") *ERC667 is not an EIP*
+    ERC223 is still in [LAST_CALL] and is not widely used.
+- [ERC667](https://github.com/ethereum/EIPs/issues/677  "ERC667-NOT AN EIP") *ERC667 is not an EIP*, just a a draft and hasn't been much used.
 
 #### Final ERC but not retrocompatible with ERC20
 - [ERC1155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1155.md  "ERC1155- FINAL")
+
+ERC1155 allows the creation of both **fongible** and **non fungible** tokens, but it is not retro-compatible with ERC20 and cannot receiver or transfer ERC20 tokens.
 
 #### Final ERC and compatible with ERC20
 
@@ -96,6 +105,7 @@ Less complexity than ERC777 and on top of safety checks, it allows a high level 
 
 **What is SafeERC20**
 
+SafeERC20 is a library created and maintained by OpenZeppelin that allows a contract to wrap around the IERC20 interface for added security.
 
 *here is more thorough and deep analysis of SafeERC20*:
 [SafeERC20_Paper](./SafeERC20.md)

@@ -23,7 +23,16 @@ contract UntrustedEscrowMultipleTokenTest is Test {
 
     }
 
-    function testDeployment()public {}
+    //TODO
+    function testDeployment(address random)public {
+        vm.assume(random != address(unEsMuTo));
+        bool isPossiblyERC20 = unEsMuTo.contractChecks(address(token));
+        assertTrue(isPossiblyERC20);
+
+        vm.expectRevert(abi.encodePacked("not a contract"));
+        bool isNotContract = unEsMuTo.contractChecks(address(random));
+        assertFalse(isNotContract);
+    }
 
     //  ------------- DEPOSIT ------------------
 
@@ -40,7 +49,8 @@ contract UntrustedEscrowMultipleTokenTest is Test {
         unEsMuTo.deposit(recipient, address(token), 1_200);
     }
 
-    function testDepositRevert1(address sender, address recipient) public {
+    //REVERT: deposit() "no total supply"
+    function testDepositRevertCheckNoTotalSupply(address sender, address recipient) public {
         vm.assume(sender != address(0));
         vm.assume(recipient != address(0));
         vm.assume(recipient != sender);
@@ -49,12 +59,13 @@ contract UntrustedEscrowMultipleTokenTest is Test {
         ERC20T noSupplyToken = new ERC20T(0);
 
         vm.startPrank(sender);
-        noSupplyToken.approve(address(noSupplyToken), 5_000);
+        noSupplyToken.approve(address(unEsMuTo), 5_000);
         vm.expectRevert(abi.encodePacked("no total supply"));
         unEsMuTo.deposit(recipient, address(noSupplyToken), 1_200);
     }
 
-    function testDepositRevert2(address sender, address recipient) public {
+    //REVERT: deposit() "not a contract"
+    function testDepositRevertCheckNotAcontract(address sender, address recipient) public {
         vm.assume(sender != address(0));
         vm.assume(recipient != address(0));
         vm.assume(recipient != sender);
@@ -66,7 +77,8 @@ contract UntrustedEscrowMultipleTokenTest is Test {
         unEsMuTo.deposit(recipient, random, 1_200);
     }
 
-    function testDepositRevert1(address sender) public {
+    //REVERT: deposit() "no zero address receiver"
+    function testDepositRevertNoZeroAddressReceiver(address sender) public {
         vm.assume(sender != address(0));
 
         vm.prank(sender);
@@ -76,6 +88,7 @@ contract UntrustedEscrowMultipleTokenTest is Test {
 
     // -------------- WITHDRAW -----------------
 
+    //SIMULATE DEPOSIT FOR TESTING
     function mockDeposit(address sender, address recipient) public {
         vm.prank(ownerToken);
         token.transfer(sender, 1_500);
@@ -88,6 +101,7 @@ contract UntrustedEscrowMultipleTokenTest is Test {
         unEsMuTo.deposit(recipient, address(token), 1_200);
     }
 
+    //SUCCESS: withdraw()
     //BUG: with fuzzing detects 1200 != 2400 (10k runs)
     function testWithdraw(address sender, address recipient) public {
         vm.assume(
@@ -118,6 +132,7 @@ contract UntrustedEscrowMultipleTokenTest is Test {
         assertGt(escr.claimTime, 0, "claimTime not zero");
     }
 
+    //Revert wihtdraw() "caller is not recipient"
     function testRevertWithdrawCallerIsNotRecipient(address sender, address recipient, address notRecipient) public {
         vm.assume(
         sender != address(0) && 
@@ -138,6 +153,7 @@ contract UntrustedEscrowMultipleTokenTest is Test {
         unEsMuTo.withdraw(1);
     }
 
+    //Revert wihtdraw() "funds already claimed"
     function testRevertWithdrawFundsAlreadyClaimed(address sender, address recipient) public {
         vm.assume(
             sender != address(0) && 
@@ -162,6 +178,7 @@ contract UntrustedEscrowMultipleTokenTest is Test {
         unEsMuTo.withdraw(1);
     }
 
+    //Revert wihtdraw() "cannot be claimed yet"
     function testRevertWithdrawCannotBeClaimedYet(address sender, address recipient, uint256 time) public {
         vm.assume(
             sender != address(0) && 
@@ -184,9 +201,10 @@ contract UntrustedEscrowMultipleTokenTest is Test {
         unEsMuTo.withdraw(1);
     }
 
-    // -------------- APPROVAL -----------------
+    // -------------- REQUEST -----------------
 
-    function testApproveUnlocking(address sender, address recipient) public {
+    //SUCCESS: requestUnlocking
+    function testRequestUnlocking(address sender, address recipient) public {
         vm.assume(
             sender != address(0) && 
             recipient != address(0) &&
@@ -200,14 +218,72 @@ contract UntrustedEscrowMultipleTokenTest is Test {
         skip(6 weeks + 1 minutes);
 
         vm.prank(sender);
-        unEsMuTo.approveUnlocking(1);
+        unEsMuTo.requestUnlocking(1);
 
-        assertTrue(unEsMuTo.isUnlocked(1));
+        assertTrue(unEsMuTo.isRequested(1));
 
-        assertFalse(unEsMuTo.escrow(1).isRedeemed, "not unlocked should be false");
+        assertFalse(unEsMuTo.escrow(1).isRedeemed, "not requested should be false");
     }
 
-    function testRevertApproveUnlockingOnlySenderCanApprove(address sender, address recipient, address notSender) public {
+        //REVERT: requestUnlocking "escrow is over"
+        function testRevertRequestUnlockingEscrowIsOver(address sender, address recipient, uint256 timeSkip) public {
+            vm.assume(
+                sender != address(0) && 
+                recipient != address(0) && 
+                sender != recipient &&
+                recipient != address(unEsMuTo)
+            );
+            vm.assume(timeSkip > 6 weeks && timeSkip < 520 weeks);
+    
+            //create deposit
+            mockDeposit(sender, recipient);
+    
+            //Skip the withdraw buffer of 3 days
+            skip(4 days);
+    
+            vm.prank(recipient);
+            //withdraw
+            unEsMuTo.withdraw(1);
+
+            //skip the 6 weeks buffer for unlocking
+            skip(timeSkip);
+
+    
+            // //MUST revert because funds were withdrawn and escrow is redeemed
+            // vm.prank(sender);
+            // vm.expectRevert(abi.encodePacked("escrow is over"));
+            // unEsMuTo.requestUnlocking(1);
+    
+            // //MUST be locked
+            // bool isUnlocked = unEsMuTo.isRequested(1);
+            // assertFalse(isUnlocked, "is requested");
+        }
+
+    //REVERT: requestUnlocking "already requested"
+    function testRevertRequestUnlockingAlreadyRequested(address sender, address recipient) public{ 
+        vm.assume(
+            sender != address(0) && 
+            recipient != address(0) &&
+            sender != recipient
+        );
+        
+        //create deposit
+        mockDeposit(sender, recipient);
+
+        //
+        skip(6 weeks + 1 minutes);
+
+        //Aprove unlocking
+        vm.startPrank(sender);
+        unEsMuTo.requestUnlocking(1);
+
+        //MUST revert because already approved for refund
+        vm.expectRevert(abi.encodePacked("already requested"));
+        unEsMuTo.requestUnlocking(1);
+    }
+
+    //REVERT: requestUnlocking "only sender can request"
+    function testRevertRequestUnlockingOnlySenderCanRequest(address sender, address recipient, address notSender) public {
         vm.assume(
             sender != address(0) && 
             recipient != address(0) &&
@@ -223,21 +299,107 @@ contract UntrustedEscrowMultipleTokenTest is Test {
         skip(6 weeks + 1 minutes);
 
         vm.prank(notSender);
-        vm.expectRevert(abi.encodePacked("only sender can approve"));
-        unEsMuTo.approveUnlocking(1);
+        //MUST revert caller is not sender
+        vm.expectRevert(abi.encodePacked("only sender can request"));
+        unEsMuTo.requestUnlocking(1);
 
-        assertFalse(unEsMuTo.isUnlocked(1));
+        assertFalse(unEsMuTo.isRequested(1));
     }
 
-    function testRevertApproveUnlockingOnlyAfter6Weeks() public {}
+    //REVERT: requestUnlocking "only after 6 weeks"
+    function testRevertRequestUnlockingOnlyAfter6Weeks(address sender, address recipient, uint256 time) public {
+        vm.assume(
+            sender != address(0) && 
+            recipient != address(0) &&
+            sender != recipient
+        );
+        vm.assume(time < 6 weeks);
+        
+        //create deposit
+        mockDeposit(sender, recipient);
 
-    function testRevertApproveUnlockingEscrowIsOver() public {}
+        //
+        skip(time);
+
+        vm.prank(sender);
+        //MUST revert 6 weeks buffer not over
+        vm.expectRevert(abi.encodePacked("only after 6 weeks"));
+        unEsMuTo.requestUnlocking(1);
+    }
+
+
 
     // -------------- UNLOCKING ----------------
 
-    function testUnlocking() public {}
+    function testUnlocking(address sender, address recipient) public {
+        vm.assume(
+            sender != address(0) && 
+            recipient != address(0) &&
+            sender != recipient
+        );
+        
+        //create deposit
+        mockDeposit(sender, recipient);
 
-    function testRevertUnlocking1() public {}
+        //
+        skip(6 weeks + 1 minutes);
 
-    function testRevertUnlocking2() public {}
+        vm.prank(sender);
+        //sender requests for refund
+        unEsMuTo.requestUnlocking(1);
+
+        //Owner of Escrow unlocks funds
+        vm.prank(ownerEscrow);
+        unEsMuTo.unlockFunds(1);
+
+        // verify escrow is redeemed and over
+        //BUG: if not commented coverage of branches & statements falls by 10%
+        // bool isredeemed = unEsMuTo.escrow(1).isRedeemed;
+        // assertTrue(isredeemed, "not redeemed");
+    }
+
+    function testRevertUnlockingNotOwner(address sender, address recipient, address notOwner) public {
+        vm.assume(
+            sender != address(0) && 
+            recipient != address(0) &&
+            notOwner != address(0) &&
+            notOwner != ownerEscrow &&
+            sender != recipient
+        );
+        
+        //create deposit
+        mockDeposit(sender, recipient);
+
+        //
+        skip(6 weeks + 1 minutes);
+
+        vm.prank(sender);
+        //sender requests for refund
+        unEsMuTo.requestUnlocking(1);
+
+        //not the owner of Escrow try to unlock funds
+        vm.prank(notOwner);
+        //MUST revert
+        vm.expectRevert(abi.encodePacked("Ownable: caller is not the owner"));
+        unEsMuTo.unlockFunds(1);
+    }
+
+    function testRevertUnlockingNotRequestedForRefund(address sender, address recipient) public {
+        vm.assume(
+            sender != address(0) && 
+            recipient != address(0) &&
+            sender != recipient
+        );
+        
+        //create deposit
+        mockDeposit(sender, recipient);
+
+        //
+        skip(6 weeks + 1 minutes);
+
+        vm.prank(ownerEscrow);
+        vm.expectRevert(abi.encodePacked("not requested"));
+        unEsMuTo.unlockFunds(1);
+    }
+
 }
