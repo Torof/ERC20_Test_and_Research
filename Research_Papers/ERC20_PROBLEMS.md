@@ -70,9 +70,11 @@ ERC1155 allows the creation of both **fongible** and **non fungible** tokens, bu
 
 - hooks
 
-#### What can be potential pitfalls
+- security checks
 
-- No security checks
+- notifies receiving contract
+
+#### What can be potential pitfalls
 
 - external call / possible reentrancy
 
@@ -84,7 +86,9 @@ ERC1155 allows the creation of both **fongible** and **non fungible** tokens, bu
 
 #### What does it solve
 
-- payable token
+- payable token / notifies receiving contract
+
+- security checks
 
 #### What can be potential pitfalls
 
