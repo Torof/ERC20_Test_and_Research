@@ -7,7 +7,7 @@
 
 - What are some of its short comings
  
-  <If ERC20 was a big game changer, as one of the first standardisation of tokens there are a lot of **problems and lack of features** that could not be foreseen and that were address by later standards.
+  *If ERC20 was a big game changer, as one of the first standardisation of tokens there are a lot of **problems and lack of features** that could not be foreseen and that were address by later standards.*
 
   - ERC20 **lack of callback** to notify a receiving contract is a *big problem* even today and many developers are still trying to bring solutions to it.
 
@@ -16,7 +16,8 @@
  [ERC20_Problems and shortcomings](./Research_Papers/ERC20_PROBLEMS.md)
 
 - What are possible solutions ?
-    To address those problems several solutions were built and are still being proposed such as wrapper libraries, extensions or new standards:
+
+    *To address those problems several solutions were built and are still being proposed such as wrapper libraries, extensions or new standards*:
     - ERC223
     - ERC777
     - ERC1363
